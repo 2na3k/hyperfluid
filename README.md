@@ -17,12 +17,32 @@ make run       # defaults: coinbase, BTC-USD + ETH-USD
 Or specify source and symbols:
 
 ```bash
-python3 run.py --source-type coinbase --symbol-list "BTC-USD,ETH-USD"
-python3 run.py --source-type binance --symbol-list "BTCUSDT,ETHUSDT"
-python3 run.py --source-type hyperliquid --symbol-list "BTC,ETH"
+make dev       # binance, BTCUSDT+ETHUSDT, fast window for iteration
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## run parameters
+
+All parameters are set via environment variables (with defaults):
+
+| Variable                    | Default            | Description                              |
+|-----------------------------|--------------------|------------------------------------------|
+| `HYPERFLUID_SOURCE_TYPE`    | `coinbase`         | Exchange source (`binance`, `hyperliquid`, `coinbase`) |
+| `HYPERFLUID_SYMBOLS`        | `BTC-USDC,ETH-USDC`| Comma-separated symbol list              |
+| `HYPERFLUID_WINDOW_SIZE`    | `300`              | Rolling return window per stream         |
+| `HYPERFLUID_MIN_SAMPLES`    | `30`               | Minimum samples before matrix is computed |
+| `HYPERFLUID_BROADCAST_INTERVAL` | `1.0`          | Seconds between matrix broadcasts        |
+
+```bash
+# example: fast iteration on binance with tiny window
+HYPERFLUID_SOURCE_TYPE=binance \
+HYPERFLUID_SYMBOLS="BTCUSDT,ETHUSDT" \
+HYPERFLUID_WINDOW_SIZE=60 \
+HYPERFLUID_MIN_SAMPLES=5 \
+HYPERFLUID_BROADCAST_INTERVAL=0.25 \
+make run
+```
 
 ## symbol format by exchange
 
