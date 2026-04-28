@@ -4,14 +4,14 @@ from collections import deque
 from server import config
 from server.models.errors import StreamError
 from server.models.tick import Tick
-from server.services.covariance import compute_covariance_matrix
 from server.services.timing import measure_ms
 
 
 class StreamManager:
-    def __init__(self, rolling, broadcaster) -> None:
+    def __init__(self, rolling, broadcaster, covariance_calculator) -> None:
         self.rolling = rolling
         self.broadcaster = broadcaster
+        self.covariance_calculator = covariance_calculator
         self.sources: list = []
         self.matrix_timings_ms: deque[float] = deque(maxlen=500)
 
@@ -45,7 +45,7 @@ class StreamManager:
             await asyncio.sleep(config.BROADCAST_INTERVAL_SECONDS)
             returns_map = self.rolling.get_all_returns()
             with measure_ms() as matrix_timer:
-                streams, cov, corr = compute_covariance_matrix(
+                result = self.covariance_calculator.compute(
                     returns_map, config.MIN_SAMPLES
                 )
             self.matrix_timings_ms.append(matrix_timer.elapsed_ms)
@@ -64,9 +64,9 @@ class StreamManager:
 
             payload = {
                 "timestamp": int(asyncio.get_event_loop().time() * 1000),
-                "streams": streams,
-                "covariance": cov,
-                "correlation": corr,
+                "streams": result.streams,
+                "covariance": result.covariance,
+                "correlation": result.correlation,
                 "status": status,
                 "metrics": {
                     "matrixGenerationMs": round(matrix_timer.elapsed_ms, 4),

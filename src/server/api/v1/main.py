@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse
 from server import config
 from server.services.broadcaster import Broadcaster
 from server.services.rolling_returns import RollingReturns
+from server.services.cov import get_covariance_calculator
 from server.services.stream_manager import StreamManager
 from server.sources.binance import BinanceSource
 from server.sources.coinbase import CoinbaseSource
@@ -16,7 +17,8 @@ from server.sources.hyperliquid import HyperliquidSource
 
 broadcaster = Broadcaster()
 rolling = RollingReturns(window_size=config.WINDOW_SIZE)
-manager = StreamManager(rolling, broadcaster)
+cov_calculator = get_covariance_calculator(config.COV_BACKEND)
+manager = StreamManager(rolling, broadcaster, cov_calculator)
 
 
 @asynccontextmanager

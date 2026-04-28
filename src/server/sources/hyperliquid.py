@@ -3,7 +3,6 @@ import json
 from collections.abc import Awaitable, Callable
 
 import websockets
-from server.models.errors import StreamError
 from server.models.tick import Tick
 
 
@@ -17,35 +16,22 @@ class HyperliquidSource:
             try:
                 async with websockets.connect(url) as ws:
                     for coin in self.coins:
-                        try:
-                            await ws.send(
-                                json.dumps(
-                                    {
-                                        "method": "subscribe",
-                                        "subscription": {
-                                            "type": "trades",
-                                            "coin": coin,
-                                        },
-                                    }
-                                )
+                        await ws.send(
+                            json.dumps(
+                                {
+                                    "method": "subscribe",
+                                    "subscription": {
+                                        "type": "trades",
+                                        "coin": coin,
+                                    },
+                                }
                             )
-                            resp = await asyncio.wait_for(ws.recv(), timeout=5)
-                            data = json.loads(resp)
-                            if data.get("channel") != "subscriptionResponse":
-                                raise StreamError(
-                                    f"hyperliquid:{coin}",
-                                    "unexpected subscription response",
-                                )
-                        except StreamError:
-                            raise
-                        except Exception:
-                            raise StreamError(
-                                f"hyperliquid:{coin}",
-                                "subscription failed - invalid coin?",
-                            )
+                        )
 
                     async for msg in ws:
                         data = json.loads(msg)
+                        if data.get("channel") == "subscriptionResponse":
+                            continue
                         if data.get("channel") == "trades":
                             trades = data.get("data", [])
                             if trades:
@@ -59,8 +45,6 @@ class HyperliquidSource:
                                         timestamp_ms=int(t.get("time", 0)),
                                     )
                                 )
-            except StreamError:
-                raise
             except websockets.ConnectionClosed:
                 await asyncio.sleep(5)
             except Exception:
