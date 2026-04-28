@@ -18,7 +18,7 @@ h1 { font-weight: 400; font-size: 20px; letter-spacing: 0.3px; }
 }
 #connection-badge.connected { background: #dce8e0; color: #3b6e50; }
 #connection-badge.disconnected { background: #e8dcdc; color: #6e3b3b; }
-#last-update { color: #6b7280; }
+#last-update, #matrix-latency { color: #6b7280; }
 section { margin-bottom: 24px; }
 h2 {
   font-weight: 400; font-size: 14px; color: #6b7280;

@@ -1,9 +1,11 @@
 import asyncio
+from collections import deque
 
 from server import config
 from server.models.errors import StreamError
 from server.models.tick import Tick
 from server.services.covariance import compute_covariance_matrix
+from server.services.timing import measure_ms
 
 
 class StreamManager:
@@ -11,6 +13,7 @@ class StreamManager:
         self.rolling = rolling
         self.broadcaster = broadcaster
         self.sources: list = []
+        self.matrix_timings_ms: deque[float] = deque(maxlen=500)
 
     def add_source(self, source) -> None:
         self.sources.append(source)
@@ -41,9 +44,14 @@ class StreamManager:
         while True:
             await asyncio.sleep(config.BROADCAST_INTERVAL_SECONDS)
             returns_map = self.rolling.get_all_returns()
-            streams, cov, corr = compute_covariance_matrix(
-                returns_map, config.MIN_SAMPLES
-            )
+            with measure_ms() as matrix_timer:
+                streams, cov, corr = compute_covariance_matrix(
+                    returns_map, config.MIN_SAMPLES
+                )
+            self.matrix_timings_ms.append(matrix_timer.elapsed_ms)
+            matrix_p50_ms = self._percentile(self.matrix_timings_ms, 50)
+            matrix_p90_ms = self._percentile(self.matrix_timings_ms, 90)
+            matrix_p95_ms = self._percentile(self.matrix_timings_ms, 95)
 
             status: dict[str, dict] = {}
             for sid in config.STREAM_IDS:
@@ -60,5 +68,19 @@ class StreamManager:
                 "covariance": cov,
                 "correlation": corr,
                 "status": status,
+                "metrics": {
+                    "matrixGenerationMs": round(matrix_timer.elapsed_ms, 4),
+                    "matrixGenerationP50Ms": round(matrix_p50_ms, 4),
+                    "matrixGenerationP90Ms": round(matrix_p90_ms, 4),
+                    "matrixGenerationP95Ms": round(matrix_p95_ms, 4),
+                },
             }
             await self.broadcaster.broadcast(payload)
+
+    @staticmethod
+    def _percentile(values: deque[float], percentile: int) -> float:
+        if not values:
+            return 0.0
+        sorted_values = sorted(values)
+        idx = round((len(sorted_values) - 1) * percentile / 100)
+        return sorted_values[idx]

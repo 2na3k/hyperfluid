@@ -1,4 +1,4 @@
-import math
+import numpy as np
 
 
 def compute_covariance_matrix(
@@ -11,38 +11,18 @@ def compute_covariance_matrix(
         return [], [], []
 
     min_len = min(len(returns_map[sid]) for sid in streams)
-    aligned = {sid: returns_map[sid][-min_len:] for sid in streams}
+    values = np.array([returns_map[sid][-min_len:] for sid in streams], dtype=np.float64)
+    centered = values - values.mean(axis=1, keepdims=True)
 
-    cov: list[list[float]] = [[0.0] * n for _ in range(n)]
-    corr: list[list[float]] = [[0.0] * n for _ in range(n)]
+    cov_arr = centered @ centered.T / (min_len - 1)
+    std = np.sqrt(np.diag(cov_arr))
+    denom = np.outer(std, std)
+    corr_arr = np.divide(
+        cov_arr,
+        denom,
+        out=np.zeros_like(cov_arr),
+        where=denom > 0,
+    )
+    np.fill_diagonal(corr_arr, 1.0)
 
-    for i in range(n):
-        for j in range(n):
-            si, sj = streams[i], streams[j]
-            xi, xj = aligned[si], aligned[sj]
-
-            mean_i = sum(xi) / min_len
-            mean_j = sum(xj) / min_len
-
-            c = (
-                sum(
-                    (xi[k] - mean_i) * (xj[k] - mean_j)
-                    for k in range(min_len)
-                )
-                / (min_len - 1)
-            )
-            cov[i][j] = round(c, 10)
-
-            if i == j:
-                corr[i][j] = 1.0
-            else:
-                var_i = sum((x - mean_i) ** 2 for x in xi) / (min_len - 1)
-                var_j = sum((x - mean_j) ** 2 for x in xj) / (min_len - 1)
-                std_i = math.sqrt(var_i)
-                std_j = math.sqrt(var_j)
-                if std_i > 0 and std_j > 0:
-                    corr[i][j] = round(c / (std_i * std_j), 6)
-                else:
-                    corr[i][j] = 0.0
-
-    return streams, cov, corr
+    return streams, np.round(cov_arr, 10).tolist(), np.round(corr_arr, 6).tolist()

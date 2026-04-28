@@ -24,7 +24,9 @@ function connect() {
 
 function renderSelectors() {
   if (!state) return;
-  const allStreams = state.streams.length ? state.streams : Object.keys(state.status);
+  const allStreams = state.streams.length
+    ? state.streams
+    : Object.keys(state.status);
   if (!allStreams.length) return;
   const source = allStreams[0].split(":")[0];
   const tickers = allStreams.map((s) => ({
@@ -38,7 +40,7 @@ function renderSelectors() {
     tickers
       .map(
         (t) =>
-          `<span class="pill${selected.has(t.id) ? " active" : ""}" data-id="${t.id}">${t.symbol}</span>`
+          `<span class="pill${selected.has(t.id) ? " active" : ""}" data-id="${t.id}">${t.symbol}</span>`,
       )
       .join("") +
     `</div>`;
@@ -46,7 +48,9 @@ function renderSelectors() {
 
 function getFiltered() {
   if (!state || selected.size < 2) return null;
-  const idx = state.streams.map((s, i) => (selected.has(s) ? i : -1)).filter((i) => i >= 0);
+  const idx = state.streams
+    .map((s, i) => (selected.has(s) ? i : -1))
+    .filter((i) => i >= 0);
   const streams = idx.map((i) => state.streams[i]);
   const covariance = idx.map((i) => idx.map((j) => state.covariance[i][j]));
   const correlation = idx.map((i) => idx.map((j) => state.correlation[i][j]));
@@ -55,7 +59,12 @@ function getFiltered() {
 
 function render() {
   if (!state) return;
-  document.getElementById("last-update").textContent = new Date(state.timestamp).toLocaleTimeString();
+  document.getElementById("last-update").textContent = new Date(
+    state.timestamp,
+  ).toLocaleTimeString();
+  document.getElementById("matrix-latency").textContent = state.metrics
+    ? `matrix ${state.metrics.matrixGenerationMs.toFixed(4)}ms | p50 ${state.metrics.matrixGenerationP50Ms.toFixed(4)}ms | p90 ${state.metrics.matrixGenerationP90Ms.toFixed(4)}ms | p95 ${state.metrics.matrixGenerationP95Ms.toFixed(4)}ms`
+    : "";
   renderSelectors();
   const data = getFiltered();
   if (data) {
@@ -97,7 +106,7 @@ function renderMatrix(id, streams, matrix, colorFn, isCov) {
     el.innerHTML = '<p class="muted">waiting for data...</p>';
     return;
   }
-  let h = '<table><thead><tr><th></th>';
+  let h = "<table><thead><tr><th></th>";
   for (const s of streams) h += `<th>${s.split(":")[1] || s}</th>`;
   h += "</tr></thead><tbody>";
   for (let i = 0; i < n; i++) {
@@ -115,7 +124,7 @@ function renderMatrix(id, streams, matrix, colorFn, isCov) {
 function renderStreams(status) {
   const el = document.getElementById("streams-status");
   let h =
-    '<table><thead><tr><th>stream</th><th>status</th><th>price</th><th>samples</th></tr></thead><tbody>';
+    "<table><thead><tr><th>stream</th><th>status</th><th>price</th><th>samples</th></tr></thead><tbody>";
   for (const [sid, info] of Object.entries(status)) {
     const hasData = info.samples > 0;
     h += `<tr><td>${sid.split(":")[1] || sid}</td>
