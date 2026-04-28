@@ -45,3 +45,17 @@ td { font-variant-numeric: tabular-nums; }
   background: #faf9f7; cursor: pointer; user-select: none; color: #6b7280;
 }
 .pill.active { background: #e8eef5; border-color: #c5d5e8; color: #1f2933; }
+
+#backend-row {
+  display: flex; align-items: center; gap: 10px;
+}
+#backend-select {
+  font-size: 12px; padding: 4px 8px;
+  border: 1px solid #e5e4e2; border-radius: 3px;
+  background: #faf9f7; color: #1f2933;
+  font-family: inherit;
+}
+#backend-status { font-size: 12px; }
+#backend-status.ok { color: #3b6e50; }
+#backend-status.nodata { color: #b88a44; }
+#backend-status.err { color: #6e3b3b; }

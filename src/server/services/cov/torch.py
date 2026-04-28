@@ -11,4 +11,4 @@ class TorchCovariance:
         returns_map: Mapping[str, Sequence[float]],
         min_samples: int,
     ) -> CovarianceResult:
-        ...
+        raise NotImplementedError("PyTorch backend is not implemented yet")

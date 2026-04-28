@@ -11,4 +11,4 @@ class MlxCovariance:
         returns_map: Mapping[str, Sequence[float]],
         min_samples: int,
     ) -> CovarianceResult:
-        ...
+        raise NotImplementedError("MLX backend is not implemented yet")

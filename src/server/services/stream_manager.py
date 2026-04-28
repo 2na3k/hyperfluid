@@ -4,6 +4,7 @@ from collections import deque
 from server import config
 from server.models.errors import StreamError
 from server.models.tick import Tick
+from server.services.cov.interface import CovarianceResult
 from server.services.timing import measure_ms
 
 
@@ -17,6 +18,10 @@ class StreamManager:
 
     def add_source(self, source) -> None:
         self.sources.append(source)
+
+    def set_covariance_calculator(self, name: str) -> None:
+        from server.services.cov import get_covariance_calculator
+        self.covariance_calculator = get_covariance_calculator(name)
 
     async def start(self) -> None:
         source_tasks = [
@@ -45,9 +50,16 @@ class StreamManager:
             await asyncio.sleep(config.BROADCAST_INTERVAL_SECONDS)
             returns_map = self.rolling.get_all_returns()
             with measure_ms() as matrix_timer:
-                result = self.covariance_calculator.compute(
-                    returns_map, config.MIN_SAMPLES
-                )
+                try:
+                    result = self.covariance_calculator.compute(
+                        returns_map, config.MIN_SAMPLES
+                    )
+                except NotImplementedError:
+                    from server.services.cov import get_covariance_calculator
+                    fallback = get_covariance_calculator("baseline")
+                    result = fallback.compute(returns_map, config.MIN_SAMPLES)
+                except Exception:
+                    result = CovarianceResult([], [], [])
             self.matrix_timings_ms.append(matrix_timer.elapsed_ms)
             matrix_p50_ms = self._percentile(self.matrix_timings_ms, 50)
             matrix_p90_ms = self._percentile(self.matrix_timings_ms, 90)

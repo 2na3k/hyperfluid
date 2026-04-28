@@ -1,9 +1,11 @@
 const WS_URL = `ws://${location.host}/ws/matrix`;
 let state = null;
 let selected = new Set();
+let currentBackend = "baseline";
+let ws = null;
 
 function connect() {
-  const ws = new WebSocket(WS_URL);
+  ws = new WebSocket(WS_URL);
   ws.onopen = () => {
     document.getElementById("connection-badge").textContent = "connected";
     document.getElementById("connection-badge").className = "connected";
@@ -11,15 +13,56 @@ function connect() {
   ws.onclose = () => {
     document.getElementById("connection-badge").textContent = "disconnected";
     document.getElementById("connection-badge").className = "disconnected";
+    document.getElementById("backend-select").innerHTML = "";
     setTimeout(connect, 2000);
   };
   ws.onmessage = (e) => {
-    state = JSON.parse(e.data);
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === "config") {
+      currentBackend = msg.current_backend;
+      buildBackendSelect(msg.backends);
+      return;
+    }
+
+    if (msg.type === "backend_switched") {
+      currentBackend = msg.backend;
+      setBackendStatus("ok", `${msg.backend}`);
+      return;
+    }
+
+    if (msg.type === "backend_error") {
+      setBackendStatus(
+        "err",
+        `${msg.backend}: ${msg.message}`,
+      );
+      document.getElementById("backend-select").value = currentBackend;
+      return;
+    }
+
+    state = msg;
     if (selected.size === 0 && state.streams.length) {
       state.streams.forEach((s) => selected.add(s));
     }
     render();
   };
+}
+
+function buildBackendSelect(backends) {
+  const sel = document.getElementById("backend-select");
+  sel.innerHTML = backends
+    .map(
+      (b) =>
+        `<option value="${b.name}"${b.available ? "" : " disabled"}>${b.name}${b.available ? "" : " (unavailable)"}</option>`,
+    )
+    .join("");
+  sel.value = currentBackend;
+}
+
+function setBackendStatus(cls, text) {
+  const el = document.getElementById("backend-status");
+  el.className = cls;
+  el.textContent = text;
 }
 
 function renderSelectors() {
@@ -145,5 +188,13 @@ document.addEventListener("DOMContentLoaded", () => {
     else selected.add(id);
     render();
   });
+
+  document.getElementById("backend-select").addEventListener("change", (e) => {
+    const backend = e.target.value;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: "set_backend", backend }));
+    }
+  });
+
   connect();
 });

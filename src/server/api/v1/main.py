@@ -1,4 +1,5 @@
 import asyncio
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -9,7 +10,7 @@ from fastapi.responses import FileResponse
 from server import config
 from server.services.broadcaster import Broadcaster
 from server.services.rolling_returns import RollingReturns
-from server.services.cov import get_covariance_calculator
+from server.services.cov import get_covariance_calculator, list_backends, validate_backend
 from server.services.stream_manager import StreamManager
 from server.sources.binance import BinanceSource
 from server.sources.coinbase import CoinbaseSource
@@ -45,9 +46,30 @@ app = FastAPI(title="hyperfluid", lifespan=lifespan)
 async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()
     broadcaster.add(ws)
+
+    backends = list_backends()
+    await ws.send_text(json.dumps({
+        "type": "config",
+        "backends": backends,
+        "current_backend": manager.covariance_calculator.name,
+    }))
+
     try:
         while True:
-            await ws.receive_text()
+            text = await ws.receive_text()
+            data = json.loads(text)
+            if data.get("action") == "set_backend":
+                backend = data.get("backend", "")
+                ok, msg = validate_backend(backend)
+                if ok:
+                    manager.set_covariance_calculator(backend)
+                    await ws.send_text(
+                        json.dumps({"type": "backend_switched", "backend": backend})
+                    )
+                else:
+                    await ws.send_text(
+                        json.dumps({"type": "backend_error", "backend": backend, "message": msg})
+                    )
     except WebSocketDisconnect:
         broadcaster.remove(ws)
 
