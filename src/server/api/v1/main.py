@@ -52,11 +52,15 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     broadcaster.add(ws)
 
     backends = list_backends(config.STREAM_IDS, config.WINDOW_SIZE)
-    await ws.send_text(json.dumps({
-        "type": "config",
-        "backends": backends,
-        "current_backend": manager.covariance_calculator.name,
-    }))
+    await ws.send_text(
+        json.dumps(
+            {
+                "type": "config",
+                "backends": backends,
+                "current_backend": manager.covariance_calculator.name,
+            }
+        )
+    )
 
     try:
         while True:
@@ -76,7 +80,13 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     )
                 except Exception as e:
                     await ws.send_text(
-                        json.dumps({"type": "backend_error", "backend": backend, "message": str(e)})
+                        json.dumps(
+                            {
+                                "type": "backend_error",
+                                "backend": backend,
+                                "message": str(e),
+                            }
+                        )
                     )
     except WebSocketDisconnect:
         broadcaster.remove(ws)

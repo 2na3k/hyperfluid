@@ -22,6 +22,7 @@ class CovarianceResult:
             Zero-variance pairs produce 0 correlation.
             Each value is rounded to 6 decimal places.
     """
+
     streams: list[str]
     covariance: list[list[float]]
     correlation: list[list[float]]

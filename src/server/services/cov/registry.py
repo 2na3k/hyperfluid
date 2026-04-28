@@ -23,17 +23,21 @@ def _detect_backends(
         from server.services.cov.torch import TorchCovariance
 
         TorchCovariance(stream_ids, window_size).compute(
-            {sid: [0.1, 0.2, 0.3] for sid in stream_ids}, 2,
+            {sid: [0.1, 0.2, 0.3] for sid in stream_ids},
+            2,
         )
         result.append({"name": "torch", "available": True, "device": "mps"})
     except ImportError:
-        result.append({"name": "torch", "available": False, "error": "PyTorch not installed"})
+        result.append(
+            {"name": "torch", "available": False, "error": "PyTorch not installed"}
+        )
     except Exception as e:
         result.append({"name": "torch", "available": False, "error": str(e)})
 
     # mlx
     try:
         import mlx  # noqa: F401
+
         result.append({"name": "mlx", "available": True})
     except ImportError:
         result.append({"name": "mlx", "available": False, "error": "MLX not installed"})
@@ -63,16 +67,19 @@ def get_covariance_calculator(
 
     if normalized in {"baseline", "numpy"}:
         from server.services.cov.baseline import BaselineCovariance
+
         return BaselineCovariance()
 
     if normalized == "torch":
         if stream_ids is None or window_size is None:
             raise ValueError("Torch backend requires stream_ids and window_size")
         from server.services.cov.torch import TorchCovariance
+
         return TorchCovariance(stream_ids, window_size)
 
     if normalized == "mlx":
         from server.services.cov.mlx import MlxCovariance
+
         return MlxCovariance()
 
     raise ValueError(f"Unknown covariance backend: {name}")

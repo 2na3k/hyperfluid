@@ -26,19 +26,13 @@ class TorchCovariance:
         shape = (len(self.stream_ids), self.window_size)
         self.host_values = np.zeros(shape, dtype=np.float32)
         self.host_tensor = torch.from_numpy(self.host_values)
-        self.device_values = torch.empty(
-            shape, dtype=torch.float32, device=self.device
-        )
-        self.device_valid_len = torch.empty(
-            (), dtype=torch.int64, device=self.device
-        )
+        self.device_values = torch.empty(shape, dtype=torch.float32, device=self.device)
+        self.device_valid_len = torch.empty((), dtype=torch.int64, device=self.device)
 
         self.positions = torch.arange(
             window_size, dtype=torch.int64, device=self.device
         )
-        eye = torch.eye(
-            len(self.stream_ids), dtype=torch.float32, device=self.device
-        )
+        eye = torch.eye(len(self.stream_ids), dtype=torch.float32, device=self.device)
         self.eye = eye
         self.off_diag = 1.0 - eye
 
@@ -82,7 +76,9 @@ class TorchCovariance:
         min_samples: int,
     ) -> CovarianceResult:
         streams, min_len = select_stream_window(
-            returns_map, min_samples, self.stream_ids,
+            returns_map,
+            min_samples,
+            self.stream_ids,
         )
         if not streams:
             return CovarianceResult([], [], [])

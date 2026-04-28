@@ -3,7 +3,9 @@ import os
 PORT: int = 3000
 WINDOW_SIZE: int = int(os.getenv("HYPERFLUID_WINDOW_SIZE", "300"))
 MIN_SAMPLES: int = int(os.getenv("HYPERFLUID_MIN_SAMPLES", "30"))
-BROADCAST_INTERVAL_SECONDS: float = float(os.getenv("HYPERFLUID_BROADCAST_INTERVAL", "1.0"))
+BROADCAST_INTERVAL_SECONDS: float = float(
+    os.getenv("HYPERFLUID_BROADCAST_INTERVAL", "1.0")
+)
 COV_BACKEND: str = os.getenv("HYPERFLUID_COV_BACKEND", "baseline")
 
 SOURCE_TYPE: str = os.getenv("HYPERFLUID_SOURCE_TYPE", "coinbase")

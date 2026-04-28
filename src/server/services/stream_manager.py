@@ -23,9 +23,7 @@ class StreamManager:
         self.covariance_calculator = covariance_calculator
 
     async def start(self) -> None:
-        source_tasks = [
-            asyncio.create_task(s.run(self._on_tick)) for s in self.sources
-        ]
+        source_tasks = [asyncio.create_task(s.run(self._on_tick)) for s in self.sources]
         broadcast_task = asyncio.create_task(self._broadcast_loop())
 
         done, pending = await asyncio.wait(
@@ -55,6 +53,7 @@ class StreamManager:
                     )
                 except NotImplementedError:
                     from server.services.cov import get_covariance_calculator
+
                     fallback = get_covariance_calculator("baseline")
                     result = fallback.compute(returns_map, config.MIN_SAMPLES)
                 except Exception:
