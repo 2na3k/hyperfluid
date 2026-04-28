@@ -19,9 +19,8 @@ class StreamManager:
     def add_source(self, source) -> None:
         self.sources.append(source)
 
-    def set_covariance_calculator(self, name: str) -> None:
-        from server.services.cov import get_covariance_calculator
-        self.covariance_calculator = get_covariance_calculator(name)
+    def set_covariance_calculator(self, covariance_calculator) -> None:
+        self.covariance_calculator = covariance_calculator
 
     async def start(self) -> None:
         source_tasks = [

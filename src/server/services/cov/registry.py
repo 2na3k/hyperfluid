@@ -1,22 +1,35 @@
+from collections.abc import Sequence
+
 from server.services.cov.interface import CovarianceCalculator
 
 
 _BACKENDS: list[dict] = []
+_CACHED_SHAPE: tuple | None = None
 
 
-def _detect_backends() -> list[dict]:
+def _detect_backends(
+    stream_ids: Sequence[str],
+    window_size: int,
+) -> list[dict]:
     result: list[dict] = []
 
     # baseline / numpy — always available
     result.append({"name": "baseline", "available": True})
     result.append({"name": "numpy", "available": True})
 
-    # torch
+    # torch (MPS-only)
     try:
         import torch  # noqa: F401
-        result.append({"name": "torch", "available": True})
+        from server.services.cov.torch import TorchCovariance
+
+        TorchCovariance(stream_ids, window_size).compute(
+            {sid: [0.1, 0.2, 0.3] for sid in stream_ids}, 2,
+        )
+        result.append({"name": "torch", "available": True, "device": "mps"})
     except ImportError:
         result.append({"name": "torch", "available": False, "error": "PyTorch not installed"})
+    except Exception as e:
+        result.append({"name": "torch", "available": False, "error": str(e)})
 
     # mlx
     try:
@@ -28,14 +41,24 @@ def _detect_backends() -> list[dict]:
     return result
 
 
-def list_backends() -> list[dict]:
-    global _BACKENDS
-    if not _BACKENDS:
-        _BACKENDS = _detect_backends()
+def list_backends(
+    stream_ids: Sequence[str],
+    window_size: int,
+) -> list[dict]:
+    global _BACKENDS, _CACHED_SHAPE
+    key = (tuple(stream_ids), window_size)
+    if not _BACKENDS or _CACHED_SHAPE != key:
+        _BACKENDS = _detect_backends(stream_ids, window_size)
+        _CACHED_SHAPE = key
     return list(_BACKENDS)
 
 
-def get_covariance_calculator(name: str) -> CovarianceCalculator:
+def get_covariance_calculator(
+    name: str,
+    *,
+    stream_ids: Sequence[str] | None = None,
+    window_size: int | None = None,
+) -> CovarianceCalculator:
     normalized = name.lower()
 
     if normalized in {"baseline", "numpy"}:
@@ -43,24 +66,13 @@ def get_covariance_calculator(name: str) -> CovarianceCalculator:
         return BaselineCovariance()
 
     if normalized == "torch":
+        if stream_ids is None or window_size is None:
+            raise ValueError("Torch backend requires stream_ids and window_size")
         from server.services.cov.torch import TorchCovariance
-        return TorchCovariance()
+        return TorchCovariance(stream_ids, window_size)
 
     if normalized == "mlx":
         from server.services.cov.mlx import MlxCovariance
         return MlxCovariance()
 
     raise ValueError(f"Unknown covariance backend: {name}")
-
-
-def validate_backend(name: str) -> tuple[bool, str]:
-    normalized = name.lower()
-    try:
-        calc = get_covariance_calculator(normalized)
-        result = calc.compute({}, 1)
-        return True, ""
-    except NotImplementedError as e:
-        msg = str(e) or f"Backend '{normalized}' is not implemented yet"
-        return False, msg
-    except ValueError as e:
-        return False, str(e)

@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from server import config
 from server.services.broadcaster import Broadcaster
 from server.services.rolling_returns import RollingReturns
-from server.services.cov import get_covariance_calculator, list_backends, validate_backend
+from server.services.cov import get_covariance_calculator, list_backends
 from server.services.stream_manager import StreamManager
 from server.sources.binance import BinanceSource
 from server.sources.coinbase import CoinbaseSource
@@ -18,7 +18,11 @@ from server.sources.hyperliquid import HyperliquidSource
 
 broadcaster = Broadcaster()
 rolling = RollingReturns(window_size=config.WINDOW_SIZE)
-cov_calculator = get_covariance_calculator(config.COV_BACKEND)
+cov_calculator = get_covariance_calculator(
+    config.COV_BACKEND,
+    stream_ids=config.STREAM_IDS,
+    window_size=config.WINDOW_SIZE,
+)
 manager = StreamManager(rolling, broadcaster, cov_calculator)
 
 
@@ -47,7 +51,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()
     broadcaster.add(ws)
 
-    backends = list_backends()
+    backends = list_backends(config.STREAM_IDS, config.WINDOW_SIZE)
     await ws.send_text(json.dumps({
         "type": "config",
         "backends": backends,
@@ -60,15 +64,19 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             data = json.loads(text)
             if data.get("action") == "set_backend":
                 backend = data.get("backend", "")
-                ok, msg = validate_backend(backend)
-                if ok:
-                    manager.set_covariance_calculator(backend)
+                try:
+                    calculator = get_covariance_calculator(
+                        backend,
+                        stream_ids=config.STREAM_IDS,
+                        window_size=config.WINDOW_SIZE,
+                    )
+                    manager.set_covariance_calculator(calculator)
                     await ws.send_text(
                         json.dumps({"type": "backend_switched", "backend": backend})
                     )
-                else:
+                except Exception as e:
                     await ws.send_text(
-                        json.dumps({"type": "backend_error", "backend": backend, "message": msg})
+                        json.dumps({"type": "backend_error", "backend": backend, "message": str(e)})
                     )
     except WebSocketDisconnect:
         broadcaster.remove(ws)
