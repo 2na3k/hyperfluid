@@ -37,10 +37,17 @@ def _detect_backends(
     # mlx
     try:
         import mlx  # noqa: F401
+        from server.services.cov.mlx import MlxCovariance
 
+        MlxCovariance(stream_ids, window_size).compute(
+            {sid: [0.1, 0.2, 0.3] for sid in stream_ids},
+            2,
+        )
         result.append({"name": "mlx", "available": True})
     except ImportError:
         result.append({"name": "mlx", "available": False, "error": "MLX not installed"})
+    except Exception as e:
+        result.append({"name": "mlx", "available": False, "error": str(e)})
 
     return result
 
@@ -78,8 +85,10 @@ def get_covariance_calculator(
         return TorchCovariance(stream_ids, window_size)
 
     if normalized == "mlx":
+        if stream_ids is None or window_size is None:
+            raise ValueError("MLX backend requires stream_ids and window_size")
         from server.services.cov.mlx import MlxCovariance
 
-        return MlxCovariance()
+        return MlxCovariance(stream_ids, window_size)
 
     raise ValueError(f"Unknown covariance backend: {name}")

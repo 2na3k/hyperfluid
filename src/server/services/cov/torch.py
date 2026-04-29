@@ -20,53 +20,37 @@ class TorchCovariance:
 
         self.stream_ids = list(stream_ids)
         self.window_size = window_size
-        self.stream_index = {sid: i for i, sid in enumerate(self.stream_ids)}
         self.device = torch.device("mps")
-
-        shape = (len(self.stream_ids), self.window_size)
-        self.host_values = np.zeros(shape, dtype=np.float32)
-        self.host_tensor = torch.from_numpy(self.host_values)
-        self.device_values = torch.empty(shape, dtype=torch.float32, device=self.device)
-        self.device_valid_len = torch.empty((), dtype=torch.int64, device=self.device)
-
-        self.positions = torch.arange(
-            window_size, dtype=torch.int64, device=self.device
-        )
-        eye = torch.eye(len(self.stream_ids), dtype=torch.float32, device=self.device)
-        self.eye = eye
-        self.off_diag = 1.0 - eye
 
         self._warmup()
 
     def _warmup(self) -> None:
-        rows, cols = self.host_values.shape
-        self.host_values[:] = (
-            np.arange(rows * cols, dtype=np.float32).reshape(rows, cols) / cols
-        )
-        self.device_values.copy_(self.host_tensor)
-        self.device_valid_len.fill_(self.window_size)
+        rows = min(len(self.stream_ids), 8)
+        cols = min(self.window_size, 32)
+        if rows < 2 or cols < 2:
+            return
+        values = torch.arange(
+            rows * cols,
+            dtype=torch.float32,
+            device=self.device,
+        ).reshape(rows, cols)
         for _ in range(3):
-            self._compute_tensors(self.device_values, self.device_valid_len)
+            self._compute_tensors(values)
             torch.mps.synchronize()
 
     def _compute_tensors(
         self,
         values: torch.Tensor,
-        valid_len: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        start = self.positions[-1] + 1 - valid_len
-        mask = (self.positions >= start).to(values.dtype).unsqueeze(0)
-
-        masked = values * mask
-        mean = masked.sum(dim=1, keepdim=True) / valid_len.to(values.dtype)
-        centered = (values - mean) * mask
-
-        cov = centered @ centered.T / (valid_len - 1.0)
+        centered = values - values.mean(dim=1, keepdim=True)
+        cov = (
+            centered @ centered.T / (values.shape[1] - 1)
+        )  # technically (X - mu_x)(Y - mu_y)/(n-1)
 
         std = torch.sqrt(torch.diag(cov))
-        denom = torch.outer(std, std)
-        corr = torch.where(denom > 0.0, cov / denom, torch.zeros_like(cov))
-        corr = corr * self.off_diag + self.eye
+        inv_std = torch.where(std > 0.0, 1.0 / std, torch.zeros_like(std))
+        corr = cov * inv_std[:, None] * inv_std[None, :]
+        corr.fill_diagonal_(1.0)
 
         return cov, corr
 
@@ -84,27 +68,17 @@ class TorchCovariance:
             return CovarianceResult([], [], [])
 
         min_len = min(min_len, self.window_size)
-        self.host_values.fill(0.0)
+        values_np = np.empty((len(streams), min_len), dtype=np.float32)
+        for row, sid in enumerate(streams):
+            values_np[row] = returns_map[sid][-min_len:]
 
-        indices: list[int] = []
-        for sid in streams:
-            row = self.stream_index[sid]
-            indices.append(row)
-            returns = returns_map[sid]
-            self.host_values[row, -min_len:] = returns[-min_len:]
-
-        self.device_values.copy_(self.host_tensor)
-        self.device_valid_len.fill_(min_len)
-
-        cov, corr = self._compute_tensors(self.device_values, self.device_valid_len)
-        torch.mps.synchronize()
+        values = torch.from_numpy(values_np).to(self.device)
+        cov, corr = self._compute_tensors(values)
 
         cov_cpu = cov.cpu().numpy()
         corr_cpu = corr.cpu().numpy()
-
-        ix = np.ix_(indices, indices)
         return CovarianceResult(
             streams=streams,
-            covariance=np.round(cov_cpu[ix], 10).tolist(),
-            correlation=np.round(corr_cpu[ix], 6).tolist(),
+            covariance=np.round(cov_cpu, 10).tolist(),
+            correlation=np.round(corr_cpu, 6).tolist(),
         )

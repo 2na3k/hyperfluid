@@ -51,11 +51,6 @@ class StreamManager:
                     result = self.covariance_calculator.compute(
                         returns_map, config.MIN_SAMPLES
                     )
-                except NotImplementedError:
-                    from server.services.cov import get_covariance_calculator
-
-                    fallback = get_covariance_calculator("baseline")
-                    result = fallback.compute(returns_map, config.MIN_SAMPLES)
                 except Exception:
                     result = CovarianceResult([], [], [])
             self.matrix_timings_ms.append(matrix_timer.elapsed_ms)
