@@ -49,6 +49,17 @@ def _detect_backends(
     except Exception as e:
         result.append({"name": "mlx", "available": False, "error": str(e)})
 
+    # tilelang
+    try:
+        import tilelang  # noqa: F401
+        import torch  # noqa: F401
+
+        result.append({"name": "tilelang", "available": True, "target": "auto"})
+    except ImportError as e:
+        result.append({"name": "tilelang", "available": False, "error": str(e)})
+    except Exception as e:
+        result.append({"name": "tilelang", "available": False, "error": str(e)})
+
     return result
 
 
@@ -90,5 +101,12 @@ def get_covariance_calculator(
         from server.services.cov.mlx import MlxCovariance
 
         return MlxCovariance(stream_ids, window_size)
+
+    if normalized == "tilelang":
+        if stream_ids is None or window_size is None:
+            raise ValueError("TileLang backend requires stream_ids and window_size")
+        from server.services.cov.tilelang import TileLangCovariance
+
+        return TileLangCovariance(stream_ids, window_size)
 
     raise ValueError(f"Unknown covariance backend: {name}")

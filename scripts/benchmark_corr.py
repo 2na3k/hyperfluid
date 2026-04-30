@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -11,10 +13,17 @@ try:
 except ImportError:  # pragma: no cover - optional local benchmark dependency
     mx = None
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+try:
+    from server.services.cov.tilelang import TileLangCovariance
+except ImportError:  # pragma: no cover - optional local benchmark dependency
+    TileLangCovariance = None
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Benchmark NumPy vs Torch correlation matrix calculation."
+        description="Benchmark NumPy/Torch/MLX/TileLang correlation calculation."
     )
     parser.add_argument("--entries", type=int, default=10_000)
     parser.add_argument("--samples", type=int, default=64)
@@ -24,6 +33,24 @@ def parse_args() -> argparse.Namespace:
         "--device",
         choices=("auto", "cpu", "mps", "cuda"),
         default="auto",
+    )
+    parser.add_argument(
+        "--tilelang-target",
+        default="auto",
+        help="TileLang target string, e.g. auto, cuda -arch=sm_90, metal, llvm.",
+    )
+    parser.add_argument(
+        "--tilelang-backend",
+        default="auto",
+        help="TileLang execution backend. Leave as auto unless debugging.",
+    )
+    parser.add_argument("--tilelang-block-m", type=int, default=8)
+    parser.add_argument("--tilelang-block-n", type=int, default=8)
+    parser.add_argument("--tilelang-block-rows", type=int, default=128)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Compare TileLang output against NumPy before timing.",
     )
     return parser.parse_args()
 
@@ -45,13 +72,18 @@ def sync(device: torch.device) -> None:
         torch.cuda.synchronize()
 
 
-def numpy_corr(values: np.ndarray) -> np.ndarray:
+def numpy_cov_corr(values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     centered = values - values.mean(axis=1, keepdims=True)
     cov = centered @ centered.T / (values.shape[1] - 1)
     std = np.sqrt(np.diag(cov))
     denom = np.outer(std, std)
     corr = np.divide(cov, denom, out=np.zeros_like(cov), where=denom > 0)
     np.fill_diagonal(corr, 1.0)
+    return cov, corr
+
+
+def numpy_corr(values: np.ndarray) -> np.ndarray:
+    _, corr = numpy_cov_corr(values)
     return corr
 
 
@@ -125,6 +157,26 @@ def main() -> None:
         mlx_eye = None
         mlx_off_diag = None
 
+    if TileLangCovariance is not None:
+        try:
+            tilelang_backend = TileLangCovariance(
+                [f"stream-{i}" for i in range(args.entries)],
+                args.samples,
+                target=args.tilelang_target,
+                execution_backend=args.tilelang_backend,
+                block_rows=args.tilelang_block_rows,
+                block_m=args.tilelang_block_m,
+                block_n=args.tilelang_block_n,
+            )
+        except Exception as e:  # pragma: no cover - depends on local accelerator stack
+            tilelang_backend = None
+            tilelang_error = str(e)
+        else:
+            tilelang_error = ""
+    else:
+        tilelang_backend = None
+        tilelang_error = "server.services.cov.tilelang could not be imported"
+
     def run_numpy() -> None:
         corr = numpy_corr(values_np)
         # Touch one value so the result cannot be optimized away by future runtimes.
@@ -140,12 +192,34 @@ def main() -> None:
         mx.eval(corr)
         float(corr[0, 0])
 
+    def run_tilelang() -> None:
+        _, corr = tilelang_backend.compute_arrays(values_np)
+        float(corr[0, 0])
+
+    if args.check and tilelang_backend is not None:
+        cov_np, corr_np = numpy_cov_corr(values_np)
+        cov_tilelang, corr_tilelang = tilelang_backend.compute_arrays(values_np)
+        print(
+            "tilelang check: "
+            f"cov max_abs={np.max(np.abs(cov_tilelang - cov_np)):.6g} "
+            f"corr max_abs={np.max(np.abs(corr_tilelang - corr_np)):.6g}"
+        )
+
     bench("numpy", args.warmup, args.repeat, run_numpy)
     bench(f"torch/{device.type}", args.warmup, args.repeat, run_torch)
     if mx is None:
         print("mlx: skipped because the mlx package is not installed")
     else:
         bench("mlx", args.warmup, args.repeat, run_mlx)
+    if tilelang_backend is None:
+        print(f"tilelang: skipped because {tilelang_error}")
+    else:
+        bench(
+            f"tilelang/{args.tilelang_target}",
+            args.warmup,
+            args.repeat,
+            run_tilelang,
+        )
 
 
 if __name__ == "__main__":

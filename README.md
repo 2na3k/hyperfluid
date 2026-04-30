@@ -8,6 +8,13 @@ Real-time price covariance/correlation dashboard. Ingests trade data from crypto
 make install   # pip install dependencies
 ```
 
+Optional acceleration backends:
+
+```bash
+uv sync --extra torch
+uv sync --extra tilelang
+```
+
 ## usage
 
 ```bash
@@ -63,3 +70,11 @@ Exchange WS  →  Python source adapter  →  Rolling returns  →  Covariance/c
 Three exchange sources exist: `binance`, `hyperliquid`, `coinbase`. Run with one at a time via `--source-type`.
 
 Computed every 1s using a rolling window of 300 log returns (configurable in `src/server/config.py`). Matrices filtered client-side by toggling ticker pills.
+
+## covariance benchmarks
+
+```bash
+uv run python scripts/benchmark_corr.py --entries 1024 --samples 64 --warmup 1 --repeat 3 --tilelang-target auto --check
+```
+
+The TileLang backend is optional and appears as `tilelang` when the package is installed. Its custom kernel precomputes per-stream row statistics, computes only the upper triangle of the covariance/correlation matrix, and writes the mirrored entries.

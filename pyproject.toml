@@ -14,3 +14,4 @@ dependencies = [
 
 [project.optional-dependencies]
 torch = ["torch>=2.4.0"]
+tilelang = ["tilelang>=0.1.8", "torch>=2.4.0"]
