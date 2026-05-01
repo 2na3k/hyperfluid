@@ -1,50 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>hyperfluid</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>h</text></svg>">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-  <div id="app">
-    <header>
-      <h1>hyperfluid</h1>
-      <div id="status">
-        <span id="connection-badge">disconnected</span>
-        <span id="matrix-latency"></span>
-        <span id="last-update"></span>
-      </div>
-    </header>
-    <main>
-      <section id="backend-panel">
-        <h2>covariance backend</h2>
-        <div id="backend-row">
-          <select id="backend-select"></select>
-          <span id="backend-status"></span>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>hyperfluid.</title>
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>h.</text></svg>"
+        />
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div id="app">
+            <header>
+                <h1>hyperfluid.</h1>
+                <div id="status">
+                    <span id="connection-badge">disconnected</span>
+                    <span id="matrix-latency"></span>
+                    <span id="last-update"></span>
+                </div>
+            </header>
+            <main>
+                <section id="backend-panel">
+                    <h2>covariance backend</h2>
+                    <div id="backend-row">
+                        <select id="backend-select"></select>
+                        <span id="backend-status"></span>
+                    </div>
+                </section>
+                <section id="selectors-panel">
+                    <h2>streams</h2>
+                    <div id="stream-selectors">
+                        <div id="ticker-pills"></div>
+                    </div>
+                </section>
+                <section id="correlation-panel">
+                    <h2>correlation</h2>
+                    <div id="correlation-table"></div>
+                </section>
+                <section id="covariance-panel">
+                    <h2>covariance</h2>
+                    <div id="covariance-table"></div>
+                </section>
+                <section id="status-panel">
+                    <h2>status</h2>
+                    <div id="streams-status"></div>
+                </section>
+            </main>
         </div>
-      </section>
-      <section id="selectors-panel">
-        <h2>streams</h2>
-        <div id="stream-selectors">
-          <div id="ticker-pills"></div>
-        </div>
-      </section>
-      <section id="correlation-panel">
-        <h2>correlation</h2>
-        <div id="correlation-table"></div>
-      </section>
-      <section id="covariance-panel">
-        <h2>covariance</h2>
-        <div id="covariance-table"></div>
-      </section>
-      <section id="status-panel">
-        <h2>status</h2>
-        <div id="streams-status"></div>
-      </section>
-    </main>
-  </div>
-  <script src="app.js"></script>
-</body>
+        <script src="app.js"></script>
+    </body>
 </html>

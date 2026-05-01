@@ -22,6 +22,7 @@ cov_calculator = get_covariance_calculator(
     config.COV_BACKEND,
     stream_ids=config.STREAM_IDS,
     window_size=config.WINDOW_SIZE,
+    lag_count=config.FFT_LAG_COUNT,
 )
 manager = StreamManager(rolling, broadcaster, cov_calculator)
 
@@ -51,7 +52,11 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()
     broadcaster.add(ws)
 
-    backends = list_backends(config.STREAM_IDS, config.WINDOW_SIZE)
+    backends = list_backends(
+        config.STREAM_IDS,
+        config.WINDOW_SIZE,
+        config.FFT_LAG_COUNT,
+    )
     await ws.send_text(
         json.dumps(
             {
@@ -73,6 +78,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                         backend,
                         stream_ids=config.STREAM_IDS,
                         window_size=config.WINDOW_SIZE,
+                        lag_count=config.FFT_LAG_COUNT,
                     )
                     manager.set_covariance_calculator(calculator)
                     await ws.send_text(

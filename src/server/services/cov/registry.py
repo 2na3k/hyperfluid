@@ -10,12 +10,14 @@ _CACHED_SHAPE: tuple | None = None
 def _detect_backends(
     stream_ids: Sequence[str],
     window_size: int,
+    lag_count: int,
 ) -> list[dict]:
     result: list[dict] = []
 
     # baseline / numpy — always available
     result.append({"name": "baseline", "available": True})
     result.append({"name": "numpy", "available": True})
+    result.append({"name": "fft_lag", "available": True, "lag_count": lag_count})
 
     # torch (MPS-only)
     try:
@@ -66,11 +68,12 @@ def _detect_backends(
 def list_backends(
     stream_ids: Sequence[str],
     window_size: int,
+    lag_count: int = 16,
 ) -> list[dict]:
     global _BACKENDS, _CACHED_SHAPE
-    key = (tuple(stream_ids), window_size)
+    key = (tuple(stream_ids), window_size, lag_count)
     if not _BACKENDS or _CACHED_SHAPE != key:
-        _BACKENDS = _detect_backends(stream_ids, window_size)
+        _BACKENDS = _detect_backends(stream_ids, window_size, lag_count)
         _CACHED_SHAPE = key
     return list(_BACKENDS)
 
@@ -80,6 +83,7 @@ def get_covariance_calculator(
     *,
     stream_ids: Sequence[str] | None = None,
     window_size: int | None = None,
+    lag_count: int = 16,
 ) -> CovarianceCalculator:
     normalized = name.lower()
 
@@ -87,6 +91,13 @@ def get_covariance_calculator(
         from server.services.cov.baseline import BaselineCovariance
 
         return BaselineCovariance()
+
+    if normalized in {"fft_lag", "fft-lag"}:
+        if stream_ids is None or window_size is None:
+            raise ValueError("FFT lag backend requires stream_ids and window_size")
+        from server.services.cov.fft_lag import FftLagCovariance
+
+        return FftLagCovariance(stream_ids, window_size, lag_count=lag_count)
 
     if normalized == "torch":
         if stream_ids is None or window_size is None:

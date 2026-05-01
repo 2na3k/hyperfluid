@@ -41,11 +41,17 @@ function connect() {
     }
 
     state = msg;
-    if (selected.size === 0 && state.streams.length) {
-      state.streams.forEach((s) => selected.add(s));
-    }
+    reconcileSelection(state.streams);
     render();
   };
+}
+
+function reconcileSelection(streams) {
+  const available = new Set(streams);
+  selected = new Set([...selected].filter((id) => available.has(id)));
+  if (selected.size < 2 && streams.length) {
+    selected = new Set(streams);
+  }
 }
 
 function buildBackendSelect(backends) {

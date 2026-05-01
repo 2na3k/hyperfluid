@@ -40,6 +40,8 @@ All parameters are set via environment variables (with defaults):
 | `HYPERFLUID_WINDOW_SIZE`    | `300`              | Rolling return window per stream         |
 | `HYPERFLUID_MIN_SAMPLES`    | `30`               | Minimum samples before matrix is computed |
 | `HYPERFLUID_BROADCAST_INTERVAL` | `1.0`          | Seconds between matrix broadcasts        |
+| `HYPERFLUID_COV_BACKEND`    | `baseline`         | Covariance backend (`baseline`, `torch`, `mlx`, `tilelang`, `fft_lag`) |
+| `HYPERFLUID_FFT_LAG_COUNT`  | `16`               | Lag features per stream when using `fft_lag` |
 
 ```bash
 # example: fast iteration on binance with tiny window
@@ -75,6 +77,9 @@ Computed every 1s using a rolling window of 300 log returns (configurable in `sr
 
 ```bash
 uv run python scripts/benchmark_corr.py --entries 1024 --samples 64 --warmup 1 --repeat 3 --tilelang-target auto --check
+uv run python scripts/benchmark_fft_lag.py --warmup 1 --repeat 3 --check
 ```
 
 The TileLang backend is optional and appears as `tilelang` when the package is installed. Its custom kernel precomputes per-stream row statistics, computes only the upper triangle of the covariance/correlation matrix, and writes the mirrored entries.
+
+The `fft_lag` backend is always available through NumPy. It treats each rolling return stream as a circular 1D signal and emits stream-lag feature IDs such as `coinbase:BTC-USD@lag0`, using FFT cross-correlation to build the covariance matrix.
