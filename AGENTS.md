@@ -19,7 +19,7 @@ uv run python -m unittest discover tests
 uv run python tests/test_fft_lag_covariance.py
 ```
 
-No linter or type checker is configured yet.
+Linted with `ruff`, formatted with `ruff format`. Pre-commit hooks enforce both.
 
 ## Project Structure
 
@@ -102,3 +102,67 @@ scripts/
 - `window_size < lag_count` (FFT lag) → return empty
 - Malformed WS messages from exchange → must not crash the source loop
 - Source task failure → currently kills all sources via `asyncio.wait(FIRST_COMPLETED)`
+
+## Workflow
+
+### Branching
+
+- **`main`** — production-ready, protected. No direct commits.
+- All work goes through feature branches forked from `main`:
+
+  ```bash
+  git checkout main && git pull
+  git checkout -b feature/<name>
+  # or fix/<name>, chore/<name>, bench/<name>
+  ```
+
+- Keep branches short-lived. Open a PR into `main` when ready.
+
+### PR Description Format
+
+```markdown
+## Summary
+
+<one or two sentences describing what this PR does>
+
+## Changes
+
+- <bullet point per meaningful change>
+- <include file paths if relevant>
+
+## Testing
+
+- [ ] tests pass
+- [ ] lint passes (`ruff check`)
+- [ ] formatting passes (`ruff format --check`)
+```
+
+### CI
+
+GitHub Actions runs on push to `main` and every PR:
+
+| Step | Command |
+|------|---------|
+| Install | `uv sync --all-extras` |
+| Lint | `ruff check src/ tests/ scripts/` |
+| Format check | `ruff format --check src/ tests/ scripts/` |
+| Test | `uv run python -m unittest discover tests` |
+
+### Pre-commit
+
+Hooks run automatically on `git commit`:
+
+```bash
+uv sync --extra dev     # one-time install of ruff + pre-commit
+pre-commit install      # activate hooks
+```
+
+Includes: `ruff check --fix`, `ruff format`, `trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-added-large-files`.
+
+### Branch Protection (GitHub)
+
+`main` requires:
+
+- [ ] PR review before merge
+- [ ] CI checks passing (lint, format, tests)
+- [ ] No direct pushes
