@@ -23,7 +23,7 @@ def _make_row_stats_kernel(
         values: T.Tensor((rows, cols), "float32"),
         means: T.Tensor((rows,), "float32"),
         inv_stds: T.Tensor((rows,), "float32"),
-    )
+    ):
         with T.Kernel(T.ceildiv(rows, block_rows), threads=128) as bx:
             totals = T.alloc_fragment((block_rows,), "float32")
             square_totals = T.alloc_fragment((block_rows,), "float32")

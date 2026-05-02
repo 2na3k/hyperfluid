@@ -89,7 +89,9 @@ class FftLagCovarianceTest(unittest.TestCase):
         self.assertEqual(result.correlation, [])
 
     def test_compute_returns_lag_feature_ids(self) -> None:
-        backend = FftLagCovariance(["coinbase:BTC-USD", "coinbase:ETH-USD"], 4, lag_count=2)
+        backend = FftLagCovariance(
+            ["coinbase:BTC-USD", "coinbase:ETH-USD"], 4, lag_count=2
+        )
 
         result = backend.compute(
             {
