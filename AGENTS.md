@@ -118,6 +118,48 @@ scripts/
 
 - Keep branches short-lived. Open a PR into `main` when ready.
 
+### PR Creation Workflow
+
+1. Branch from `main`:
+   ```bash
+   git checkout main && git pull
+   git checkout -b <type>/<name>
+   ```
+
+2. Make changes, then verify:
+   ```bash
+   uv run ruff check src/ tests/ scripts/
+   uv run ruff format --check src/ tests/ scripts/
+   uv run python -m unittest discover tests
+   ```
+
+3. Commit and push:
+   ```bash
+   git add -A
+   git commit -m "<type>: <short description>"
+   git push -u origin <branch-name>
+   ```
+
+4. Create PR via `gh` CLI:
+   ```bash
+   gh pr create --title "<type>: <title>" --body "$(cat <<'EOF'
+   ## Summary
+   
+   <one or two sentences>
+   
+   ## Changes
+   
+   - <bullet point per change>
+   
+   ## Testing
+   
+   - [ ] tests pass
+   - [ ] lint passes
+   - [ ] formatting passes
+   EOF
+   )"
+   ```
+
 ### PR Description Format
 
 ```markdown
