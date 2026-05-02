@@ -1,4 +1,4 @@
-# hyperfluid
+# hyperfluid: test project
 
 Real-time price covariance/correlation dashboard. Ingests trade data from crypto exchanges and computes rolling covariance and correlation matrices, served via a minimal vanilla JS frontend.
 
@@ -33,15 +33,15 @@ Open [http://localhost:3000](http://localhost:3000).
 
 All parameters are set via environment variables (with defaults):
 
-| Variable                    | Default            | Description                              |
-|-----------------------------|--------------------|------------------------------------------|
-| `HYPERFLUID_SOURCE_TYPE`    | `coinbase`         | Exchange source (`binance`, `hyperliquid`, `coinbase`) |
-| `HYPERFLUID_SYMBOLS`        | `BTC-USDC,ETH-USDC`| Comma-separated symbol list              |
-| `HYPERFLUID_WINDOW_SIZE`    | `300`              | Rolling return window per stream         |
-| `HYPERFLUID_MIN_SAMPLES`    | `30`               | Minimum samples before matrix is computed |
-| `HYPERFLUID_BROADCAST_INTERVAL` | `1.0`          | Seconds between matrix broadcasts        |
-| `HYPERFLUID_COV_BACKEND`    | `baseline`         | Covariance backend (`baseline`, `torch`, `mlx`, `tilelang`, `fft_lag`) |
-| `HYPERFLUID_FFT_LAG_COUNT`  | `16`               | Lag features per stream when using `fft_lag` |
+| Variable                        | Default             | Description                                                            |
+| ------------------------------- | ------------------- | ---------------------------------------------------------------------- |
+| `HYPERFLUID_SOURCE_TYPE`        | `coinbase`          | Exchange source (`binance`, `hyperliquid`, `coinbase`)                 |
+| `HYPERFLUID_SYMBOLS`            | `BTC-USDC,ETH-USDC` | Comma-separated symbol list                                            |
+| `HYPERFLUID_WINDOW_SIZE`        | `300`               | Rolling return window per stream                                       |
+| `HYPERFLUID_MIN_SAMPLES`        | `30`                | Minimum samples before matrix is computed                              |
+| `HYPERFLUID_BROADCAST_INTERVAL` | `1.0`               | Seconds between matrix broadcasts                                      |
+| `HYPERFLUID_COV_BACKEND`        | `baseline`          | Covariance backend (`baseline`, `torch`, `mlx`, `tilelang`, `fft_lag`) |
+| `HYPERFLUID_FFT_LAG_COUNT`      | `16`                | Lag features per stream when using `fft_lag`                           |
 
 ```bash
 # example: fast iteration on binance with tiny window
@@ -55,11 +55,11 @@ make run
 
 ## symbol format by exchange
 
-| Source        | Symbol format     | Example                          |
-|---------------|-------------------|----------------------------------|
-| `coinbase`    | `BASE-QUOTE`      | `BTC-USD`, `ETH-USD`             |
-| `binance`     | `BASEQUOTE`       | `BTCUSDT`, `ETHUSDT`             |
-| `hyperliquid` | `COIN`            | `BTC`, `ETH`                     |
+| Source        | Symbol format | Example              |
+| ------------- | ------------- | -------------------- |
+| `coinbase`    | `BASE-QUOTE`  | `BTC-USD`, `ETH-USD` |
+| `binance`     | `BASEQUOTE`   | `BTCUSDT`, `ETHUSDT` |
+| `hyperliquid` | `COIN`        | `BTC`, `ETH`         |
 
 Using an invalid symbol prints nothing — the status panel shows `no data` for that stream.
 
