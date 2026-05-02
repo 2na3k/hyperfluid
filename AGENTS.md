@@ -108,6 +108,7 @@ scripts/
 ### Branching
 
 - **`main`** — production-ready, protected. No direct commits.
+- **NEVER push directly to `main`** — all changes must go through a PR into `main`.
 - All work goes through feature branches forked from `main`:
 
   ```bash
