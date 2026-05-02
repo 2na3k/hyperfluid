@@ -87,7 +87,9 @@ def numpy_corr(values: np.ndarray) -> np.ndarray:
     return corr
 
 
-def torch_corr(values: torch.Tensor, eye: torch.Tensor, off_diag: torch.Tensor) -> torch.Tensor:
+def torch_corr(
+    values: torch.Tensor, eye: torch.Tensor, off_diag: torch.Tensor
+) -> torch.Tensor:
     centered = values - values.mean(dim=1, keepdim=True)
     cov = centered @ centered.T / (values.shape[1] - 1)
     std = torch.sqrt(torch.diag(cov))

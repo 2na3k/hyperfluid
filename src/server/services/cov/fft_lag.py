@@ -55,9 +55,9 @@ class FftLagCovariance:
             for row_b in range(rows):
                 start_b = row_b * self.lag_count
                 end_b = start_b + self.lag_count
-                covariance[start_a:end_a, start_b:end_b] = (
-                    cross_corr[row_a, row_b, lag_offsets] / (cols - 1)
-                )
+                covariance[start_a:end_a, start_b:end_b] = cross_corr[
+                    row_a, row_b, lag_offsets
+                ] / (cols - 1)
 
         covariance = (covariance + covariance.T) / 2.0
         std = np.sqrt(np.diag(covariance))
