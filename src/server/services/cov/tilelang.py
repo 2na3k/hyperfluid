@@ -26,26 +26,24 @@ def _make_row_stats_kernel(
     ):
         with T.Kernel(T.ceildiv(rows, block_rows), threads=128) as bx:
             totals = T.alloc_fragment((block_rows,), "float32")
-            square_totals = T.alloc_fragment((block_rows,), "float32")
             T.clear(totals)
-            T.clear(square_totals)
 
             for local_row in T.Parallel(block_rows):
                 row = bx * block_rows + local_row
                 if row < rows:
                     for col in T.serial(cols):
-                        value = values[row, col]
-                        totals[local_row] += value
-                        square_totals[local_row] += value * value
+                        totals[local_row] += values[row, col]
 
             for local_row in T.Parallel(block_rows):
                 row = bx * block_rows + local_row
                 if row < rows:
                     mean = totals[local_row] / cols
-                    # sample variance: sum((x - mean)^2) / (n - 1)
-                    var = (square_totals[local_row] - totals[local_row] * mean) / (
-                        cols - 1
-                    )
+                    square_diff_total = T.alloc_fragment((1,), "float32")
+                    square_diff_total[0] = 0.0
+                    for col in T.serial(cols):
+                        diff = values[row, col] - mean
+                        square_diff_total[0] += diff * diff
+                    var = square_diff_total[0] / (cols - 1)
                     means[row] = mean
                     inv_stds[row] = T.rsqrt(var) if var > 0.0 else 0.0
 

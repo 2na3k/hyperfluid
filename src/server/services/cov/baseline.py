@@ -1,7 +1,14 @@
+import logging
+
 import numpy as np
 
-from server.services.cov.common import prepare_returns
+from server.services.cov.common import (
+    correlation_from_covariance,
+    prepare_returns,
+)
 from server.services.cov.interface import CovarianceResult
+
+logger = logging.getLogger(__name__)
 
 
 class BaselineCovariance:
@@ -21,15 +28,7 @@ class BaselineCovariance:
         centered = values - values.mean(axis=1, keepdims=True)
 
         cov_arr = centered @ centered.T / (min_len - 1)
-        std = np.sqrt(np.diag(cov_arr))
-        denom = np.outer(std, std)
-        corr_arr = np.divide(
-            cov_arr,
-            denom,
-            out=np.zeros_like(cov_arr),
-            where=denom > 0,
-        )
-        np.fill_diagonal(corr_arr, 1.0)
+        corr_arr = correlation_from_covariance(cov_arr)
 
         return CovarianceResult(
             streams=streams,
