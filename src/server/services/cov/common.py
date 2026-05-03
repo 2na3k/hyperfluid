@@ -1,5 +1,7 @@
 from collections.abc import Mapping, Sequence
 
+import numpy as np
+
 
 def select_stream_window(
     returns_map: Mapping[str, Sequence[float]],
@@ -30,3 +32,11 @@ def prepare_returns(
 
     values = [list(returns_map[sid][-min_len:]) for sid in streams]
     return streams, values
+
+
+def correlation_from_covariance(cov: np.ndarray) -> np.ndarray:
+    std = np.sqrt(np.diag(cov))
+    denom = np.outer(std, std)
+    corr = np.divide(cov, denom, out=np.zeros_like(cov), where=denom > 0)
+    np.fill_diagonal(corr, 1.0)
+    return corr

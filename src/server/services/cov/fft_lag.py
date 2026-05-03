@@ -4,7 +4,10 @@ from collections.abc import Mapping, Sequence
 
 import numpy as np
 
-from server.services.cov.common import select_stream_window
+from server.services.cov.common import (
+    correlation_from_covariance,
+    select_stream_window,
+)
 from server.services.cov.interface import CovarianceResult
 
 
@@ -60,15 +63,7 @@ class FftLagCovariance:
                 ] / (cols - 1)
 
         covariance = (covariance + covariance.T) / 2.0
-        std = np.sqrt(np.diag(covariance))
-        denom = np.outer(std, std)
-        correlation = np.divide(
-            covariance,
-            denom,
-            out=np.zeros_like(covariance),
-            where=denom > 0,
-        )
-        np.fill_diagonal(correlation, 1.0)
+        correlation = correlation_from_covariance(covariance)
 
         return covariance, correlation
 

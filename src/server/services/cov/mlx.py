@@ -33,7 +33,7 @@ class MlxCovariance:
         centered = values - mx.mean(values, axis=1, keepdims=True)
         cov = centered @ centered.T / (values.shape[1] - 1)
 
-        std = mx.sqrt(mx.diag(cov))
+        std = mx.sqrt(mx.abs(mx.diag(cov)))
         inv_std = mx.where(std > 0.0, 1.0 / std, mx.zeros_like(std))
         corr = cov * inv_std[:, None] * inv_std[None, :]
         eye = mx.eye(values.shape[0], dtype=corr.dtype)

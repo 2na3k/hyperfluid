@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 
 from server.services.cov.baseline import BaselineCovariance
+from server.services.cov.common import correlation_from_covariance
 from server.services.cov.fft_lag import FftLagCovariance
 from server.services.cov.registry import get_covariance_calculator, list_backends
 
@@ -22,15 +23,7 @@ def brute_circular_lag_covariance(
             out_row += 1
 
     covariance = features @ features.T / (cols - 1)
-    std = np.sqrt(np.diag(covariance))
-    denom = np.outer(std, std)
-    correlation = np.divide(
-        covariance,
-        denom,
-        out=np.zeros_like(covariance),
-        where=denom > 0,
-    )
-    np.fill_diagonal(correlation, 1.0)
+    correlation = correlation_from_covariance(covariance)
     return covariance, correlation
 
 

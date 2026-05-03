@@ -1,6 +1,10 @@
+import asyncio
 import json
+import logging
 
 from fastapi import WebSocket
+
+logger = logging.getLogger(__name__)
 
 
 class Broadcaster:
@@ -17,10 +21,12 @@ class Broadcaster:
         if not self.clients:
             return
         msg = json.dumps(payload, default=str)
-        dead: set[WebSocket] = set()
-        for ws in self.clients:
+
+        async def _send(ws: WebSocket) -> None:
             try:
                 await ws.send_text(msg)
             except Exception:
-                dead.add(ws)
-        self.clients -= dead
+                logger.debug("Removing dead WebSocket client")
+                self.clients.discard(ws)
+
+        await asyncio.gather(*[_send(ws) for ws in list(self.clients)])

@@ -47,7 +47,7 @@ class TorchCovariance:
             centered @ centered.T / (values.shape[1] - 1)
         )  # technically (X - mu_x)(Y - mu_y)/(n-1)
 
-        std = torch.sqrt(torch.diag(cov))
+        std = torch.sqrt(torch.abs(torch.diag(cov)))
         inv_std = torch.where(std > 0.0, 1.0 / std, torch.zeros_like(std))
         corr = cov * inv_std[:, None] * inv_std[None, :]
         corr.fill_diagonal_(1.0)

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -16,19 +17,30 @@ from server.sources.binance import BinanceSource
 from server.sources.coinbase import CoinbaseSource
 from server.sources.hyperliquid import HyperliquidSource
 
-broadcaster = Broadcaster()
-rolling = RollingReturns(window_size=config.WINDOW_SIZE)
-cov_calculator = get_covariance_calculator(
-    config.COV_BACKEND,
-    stream_ids=config.STREAM_IDS,
-    window_size=config.WINDOW_SIZE,
-    lag_count=config.FFT_LAG_COUNT,
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
 )
-manager = StreamManager(rolling, broadcaster, cov_calculator)
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    broadcaster = Broadcaster()
+    rolling = RollingReturns(window_size=config.WINDOW_SIZE)
+    cov_calculator = get_covariance_calculator(
+        config.COV_BACKEND,
+        stream_ids=config.STREAM_IDS,
+        window_size=config.WINDOW_SIZE,
+        lag_count=config.FFT_LAG_COUNT,
+    )
+    manager = StreamManager(rolling, broadcaster, cov_calculator)
+
+    app.state.broadcaster = broadcaster
+    app.state.manager = manager
+
     source_type = config.SOURCE_TYPE
     symbols = config.SYMBOLS
 
@@ -39,6 +51,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     elif source_type == "coinbase":
         manager.add_source(CoinbaseSource(symbols))
 
+    logger.info(
+        "Starting hyperfluid: source=%s symbols=%s backend=%s",
+        source_type,
+        symbols,
+        config.COV_BACKEND,
+    )
     task = asyncio.create_task(manager.start())
     yield
     task.cancel()
@@ -50,6 +68,9 @@ app = FastAPI(title="hyperfluid", lifespan=lifespan)
 @app.websocket("/ws/matrix")
 async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()
+    broadcaster: Broadcaster = app.state.broadcaster
+    manager: StreamManager = app.state.manager
+
     broadcaster.add(ws)
 
     backends = list_backends(

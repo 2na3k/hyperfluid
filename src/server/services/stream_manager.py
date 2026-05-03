@@ -1,11 +1,13 @@
 import asyncio
+import logging
 from collections import deque
 
 from server import config
-from server.models.errors import StreamError
 from server.models.tick import Tick
 from server.services.cov.interface import CovarianceResult
 from server.services.timing import measure_ms
+
+logger = logging.getLogger(__name__)
 
 
 class StreamManager:
@@ -33,8 +35,8 @@ class StreamManager:
 
         for task in done:
             exc = task.exception()
-            if isinstance(exc, StreamError):
-                print(f"\n*** {exc} ***\n", flush=True)
+            if exc is not None:
+                logger.error("Source task failed: %s", exc)
 
         for task in pending:
             task.cancel()
